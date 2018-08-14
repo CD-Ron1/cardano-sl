@@ -147,10 +147,6 @@ updateStatus cli = updateStatus' cli fn
            , (Wlog.Info, sformat ("Evaluated clock offset "%shown%"mcs") offset)
            )
 
--- |
--- Internal commands raised by the send loop.
-data NtpClientCmd = SendRequest
-    deriving Eq
 
 -- |
 -- Every `ntpPollDelay` we send a request to the list of `ntpServers`.  Before
