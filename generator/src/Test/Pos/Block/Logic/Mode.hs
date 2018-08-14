@@ -75,7 +75,7 @@ import           Pos.Core.Reporting (HasMisbehaviorMetrics (..),
                      MonadReporting (..))
 import           Pos.Core.Slotting (MonadSlotsData)
 import           Pos.Core.Update (BlockVersionData)
-import           Pos.Crypto (ProtocolMagic)
+import           Pos.Crypto (ProtocolMagic (..))
 import           Pos.DB (DBPure, MonadDB (..), MonadDBRead (..),
                      MonadGState (..))
 import qualified Pos.DB as DB
@@ -292,7 +292,7 @@ initBlockTestContext tp@TestParams {..} callback = do
                         Nothing ->
                             error "initBlockTestContext: no genesisSecretKeys"
                         Just ks -> ks
-            let btcAllSecrets = mkAllSecretsSimple secretKeys
+            let btcAllSecrets = mkAllSecretsSimple (Just $ getProtocolMagic dummyProtocolMagic) secretKeys
             let btCtx = BlockTestContext {btcSystemStart = systemStart, btcSSlottingStateVar = slottingState, ..}
             liftIO $ flip runReaderT clockVar $ unEmulation $ callback btCtx
     sudoLiftIO $ runTestInitMode initCtx $ initBlockTestContextDo

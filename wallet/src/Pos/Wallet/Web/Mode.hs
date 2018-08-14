@@ -341,10 +341,10 @@ instance MonadKeys WalletWebMode where
 
 getNewAddressWebWallet
     :: MonadWalletLogic ctx m
-    => (AccountId, PassPhrase) -> m Address
-getNewAddressWebWallet (accId, passphrase) = do
+    => Maybe Int32 -> (AccountId, PassPhrase) -> m Address
+getNewAddressWebWallet nm (accId, passphrase) = do
     ws <- askWalletSnapshot
-    cAddrMeta <- newAddress_ ws RandomSeed passphrase accId
+    cAddrMeta <- newAddress_ nm ws RandomSeed passphrase accId
     return $ cAddrMeta ^. wamAddress
 
 instance (HasConfigurations)
@@ -352,5 +352,5 @@ instance (HasConfigurations)
     type AddrData Pos.Wallet.Web.Mode.WalletWebMode = (AccountId, PassPhrase)
     -- We rely on the fact that Daedalus always uses HD addresses with
     -- BootstrapEra distribution.
-    getFakeChangeAddress = pure largestHDAddressBoot
+    getFakeChangeAddress = pure . largestHDAddressBoot
     getNewAddress = getNewAddressWebWallet

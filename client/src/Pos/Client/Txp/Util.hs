@@ -75,7 +75,7 @@ import           Pos.Core (Address, Coin, StakeholderId, TxFeePolicy (..),
 import           Pos.Core.Attributes (mkAttributes)
 import           Pos.Core.Configuration (HasConfiguration)
 import           Pos.Core.Update (bvdTxFeePolicy)
-import           Pos.Crypto (ProtocolMagic, RedeemSecretKey, SafeSigner,
+import           Pos.Crypto (ProtocolMagic (..), RedeemSecretKey, SafeSigner,
                      SignTag (SignRedeemTx, SignTx), deterministicKeyGen,
                      fakeSigner, hash, redeemSign, redeemToPublic, safeSign,
                      safeToPublic)
@@ -498,13 +498,14 @@ prepareTxRaw pendingTx utxo outputs fee = do
 -- Returns set of tx outputs including change output (if it's necessary)
 mkOutputsWithRem
     :: TxCreateMode m
-    => AddrData m
+    => Maybe Int32
+    -> AddrData m
     -> TxRaw
     -> TxCreator m TxOutputs
-mkOutputsWithRem addrData TxRaw {..}
+mkOutputsWithRem nm addrData TxRaw {..}
     | trRemainingMoney == mkCoin 0 = pure trOutputs
     | otherwise = do
-        changeAddr <- lift . lift $ getNewAddress addrData
+        changeAddr <- lift . lift $ getNewAddress nm addrData
         let txOut = TxOut changeAddr trRemainingMoney
         pure $ TxOutAux txOut :| toList trOutputs
 
@@ -518,7 +519,8 @@ prepareInpsOuts
     -> TxCreator m (TxOwnedInputs TxOut, TxOutputs)
 prepareInpsOuts pm pendingTx utxo outputs addrData = do
     txRaw@TxRaw {..} <- prepareTxWithFee pm pendingTx utxo outputs
-    outputsWithRem <- mkOutputsWithRem addrData txRaw
+    let networkMagic = Just $ getProtocolMagic pm
+    outputsWithRem <- mkOutputsWithRem networkMagic addrData txRaw
     pure (trInputs, outputsWithRem)
 
 createGenericTx
@@ -731,7 +733,7 @@ stabilizeTxFee pm pendingTx linearPolicy utxo outputs = do
     stabilizeTxFeeDo (_, 0) _ = pure Nothing
     stabilizeTxFeeDo (isSecondStage, attempt) expectedFee = do
         txRaw <- prepareTxRaw pendingTx utxo outputs expectedFee
-        fakeChangeAddr <- lift . lift $ getFakeChangeAddress
+        fakeChangeAddr <- lift . lift $ getFakeChangeAddress $ Just $ getProtocolMagic pm
         txMinFee <- txToLinearFee linearPolicy $
                     createFakeTxFromRawTx pm fakeChangeAddr txRaw
 

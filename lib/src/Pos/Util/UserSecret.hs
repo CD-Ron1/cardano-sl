@@ -100,7 +100,8 @@ instance Buildable WalletUserSecret where
     build WalletUserSecret{..} =
         bprint ("{ root = "%addressF%", set name = "%build%
                 ", wallets = "%pairsF%", accounts = "%pairsF%" }")
-        (makeRootPubKeyAddress $ encToPublic _wusRootKey)
+        -- COME BACK AND FIX THIS! USING Nothing FOR network magic
+        (makeRootPubKeyAddress Nothing $ encToPublic _wusRootKey)
         _wusWalletName
         _wusAccounts
         _wusAddrs

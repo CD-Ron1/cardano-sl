@@ -34,7 +34,7 @@ import qualified Pos.Context as PC
 import           Pos.Core (ChainDifficulty, HasConfiguration, Timestamp,
                      difficultyL, getCurrentTimestamp)
 import           Pos.Core.Txp (Tx, TxAux (..), TxId, TxUndo)
-import           Pos.Crypto (ProtocolMagic, WithHash (..))
+import           Pos.Crypto (ProtocolMagic (..), WithHash (..))
 import qualified Pos.DB.BlockIndex as DB
 import           Pos.DB.Class (MonadDBRead)
 import qualified Pos.DB.GState.Common as GS
@@ -158,7 +158,8 @@ txpProcessTxWebWallet pm txpConfig tx@(txId, txAux) = do
 
     toThee :: (WithHash Tx, TxUndo) -> Timestamp -> CId Wal -> m (CId Wal, THEntryExtra)
     toThee txWithUndo ts wId = do
-        wdc <- eskToWalletDecrCredentials <$> getSKById wId
+        let networkMagic = Just $ getProtocolMagic pm
+        wdc <- eskToWalletDecrCredentials networkMagic <$> getSKById networkMagic wId
         pure (wId, buildTHEntryExtra wdc txWithUndo (Nothing, Just ts))
 
 txpNormalizeWebWallet

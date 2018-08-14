@@ -30,7 +30,7 @@ import           Pos.Core.Genesis (FakeAvvmOptions (..), GenesisData (..),
                      GenesisInitializer (..), GenesisProtocolConstants (..),
                      TestnetBalanceOptions (..))
 import           Pos.Core.Slotting (Timestamp (..))
-import           Pos.Crypto.Configuration (ProtocolMagic)
+import           Pos.Crypto.Configuration (ProtocolMagic (..))
 import           Pos.DB.Block (getVerifyBlocksContext', rollbackBlocks,
                      verifyAndApplyBlocks, verifyBlocksPrefix)
 import           Pos.DB.DB (initNodeDBs)
@@ -82,7 +82,7 @@ generateBlocks pm txpConfig bCount = do
                 Just ks -> ks
     bs <- flip evalRandT g $ genBlocks pm txpConfig
             (BlockGenParams
-                { _bgpSecrets = mkAllSecretsSimple secretKeys
+                { _bgpSecrets = mkAllSecretsSimple (Just $ getProtocolMagic pm) secretKeys
                 , _bgpBlockCount = bCount
                 , _bgpTxGenParams = TxGenParams
                     { _tgpTxCountRange = (0, 2)

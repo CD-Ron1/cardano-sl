@@ -17,6 +17,8 @@ import           Pos.Crypto.HD (HDAddressPayload)
 
 import           Pos.Core.Common.AddrStakeDistribution
 
+-- newtype NetworkMagic = NetworkMagic (Maybe Int32)
+
 -- | Additional information stored along with address. It's intended
 -- to be put into 'Attributes' data type to make it extensible with
 -- softfork.

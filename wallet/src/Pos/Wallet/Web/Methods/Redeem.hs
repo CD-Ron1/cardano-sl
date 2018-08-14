@@ -17,7 +17,7 @@ import           Pos.Client.Txp.History (TxHistoryEntry (..))
 import           Pos.Client.Txp.Network (prepareRedemptionTx)
 import           Pos.Core (getCurrentTimestamp)
 import           Pos.Core.Txp (TxAux (..), TxOut (..))
-import           Pos.Crypto (PassPhrase, ProtocolMagic, aesDecrypt, hash,
+import           Pos.Crypto (PassPhrase, ProtocolMagic (..), aesDecrypt, hash,
                      redeemDeterministicKeyGen)
 import           Pos.Util (maybeThrow)
 import           Pos.Util.Mnemonic (mnemonicToAesKey)
@@ -88,15 +88,17 @@ redeemAdaInternal
     -> ByteString
     -> m CTx
 redeemAdaInternal pm txpConfig submitTx passphrase cAccId seedBs = do
+    let networkMagic = Just $ getProtocolMagic pm
+
     (_, redeemSK) <- maybeThrow (RequestError "Seed is not 32-byte long") $
                      redeemDeterministicKeyGen seedBs
     accId <- decodeCTypeOrFail cAccId
     db <- askWalletDB
 
     -- new redemption wallet
-    _ <- L.getAccount accId
+    _ <- L.getAccount networkMagic accId
 
-    dstAddr <- decodeCTypeOrFail . cadId =<< L.newAddress RandomSeed passphrase accId
+    dstAddr <- decodeCTypeOrFail . cadId =<< L.newAddress networkMagic RandomSeed passphrase accId
     ws <- getWalletSnapshot db
     th <- rewrapTxError "Cannot send redemption transaction" $ do
         (txAux, redeemAddress, redeemBalance) <-

@@ -1348,7 +1348,7 @@ exampleTxInUtxo :: TxIn
 exampleTxInUtxo = TxInUtxo exampleHashTx 47 -- TODO: loop here
 
 exampleTxOut :: TxOut
-exampleTxOut = TxOut (makePubKeyAddress (IsBootstrapEraAddr True) pkey) (Coin 47)
+exampleTxOut = TxOut (makePubKeyAddress Nothing (IsBootstrapEraAddr True) pkey) (Coin 47)
     where
         Right pkey = PublicKey <$> xpub (getBytes 0 64)
 

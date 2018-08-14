@@ -48,48 +48,52 @@ type AccountMode ctx m =
     , MonadIO m
     )
 
-myRootAddresses :: MonadKeysRead m => m [CId Wal]
-myRootAddresses = encToCId <<$>> getSecretKeysPlain
+myRootAddresses :: MonadKeysRead m => Maybe Int32 -> m [CId Wal]
+myRootAddresses nm = encToCId nm <<$>> getSecretKeysPlain
 
 getSKById
     :: AccountMode ctx m
-    => CId Wal
+    => Maybe Int32
+    -> CId Wal
     -> m EncryptedSecretKey
-getSKById wid = do
+getSKById nm wid = do
     secrets <- getSecretKeys
-    runExceptT (getSKByIdPure secrets wid) >>= eitherToThrow
+    runExceptT (getSKByIdPure nm secrets wid) >>= eitherToThrow
 
 getSKByIdPure
     :: MonadError WalletError m
-    => AllUserSecrets
+    => Maybe Int32
+    -> AllUserSecrets
     -> CId Wal
     -> m EncryptedSecretKey
-getSKByIdPure (AllUserSecrets secrets) wid =
-    maybe (throwError notFound) pure (find (\k -> encToCId k == wid) secrets)
+getSKByIdPure nm (AllUserSecrets secrets) wid =
+    maybe (throwError notFound) pure (find (\k -> encToCId nm k == wid) secrets)
   where
     notFound =
         RequestError $ sformat ("No wallet with address "%build%" found") wid
 
 getSKByAddress
     :: AccountMode ctx m
-    => ShouldCheckPassphrase
-    -> PassPhrase
-    -> WAddressMeta
-    -> m EncryptedSecretKey
-getSKByAddress scp passphrase addrMeta = do
-    secrets <- getSecretKeys
-    runExceptT (getSKByAddressPure secrets scp passphrase addrMeta) >>= eitherToThrow
-
-getSKByAddressPure
-    :: MonadError WalletError m
-    => AllUserSecrets
+    => Maybe Int32
     -> ShouldCheckPassphrase
     -> PassPhrase
     -> WAddressMeta
     -> m EncryptedSecretKey
-getSKByAddressPure secrets scp passphrase addrMeta = do
+getSKByAddress nm scp passphrase addrMeta = do
+    secrets <- getSecretKeys
+    runExceptT (getSKByAddressPure nm secrets scp passphrase addrMeta) >>= eitherToThrow
+
+getSKByAddressPure
+    :: MonadError WalletError m
+    => Maybe Int32
+    -> AllUserSecrets
+    -> ShouldCheckPassphrase
+    -> PassPhrase
+    -> WAddressMeta
+    -> m EncryptedSecretKey
+getSKByAddressPure nm secrets scp passphrase addrMeta = do
     (addr, addressKey) <-
-            deriveAddressSKPure secrets scp passphrase (addrMeta ^. wamAccount) (addrMeta ^. wamAddressIndex)
+            deriveAddressSKPure nm secrets scp passphrase (addrMeta ^. wamAccount) (addrMeta ^. wamAddressIndex)
     if addr /= addrMeta ^. wamAddress
              -- if you see this error, maybe you generated public key address with
              -- no hd wallet attribute (if so, address would be ~half shorter than
@@ -155,42 +159,46 @@ genUniqueAccountId ws genSeed wsCAddr =
 
 genUniqueAddress
     :: AccountMode ctx m
-    => WalletSnapshot
+    => Maybe Int32
+    -> WalletSnapshot
     -> AddrGenSeed
     -> PassPhrase
     -> AccountId
     -> m WAddressMeta
-genUniqueAddress ws genSeed passphrase wCAddr@AccountId{..} =
+genUniqueAddress nm ws genSeed passphrase wCAddr@AccountId{..} =
     generateUnique "address generation" genSeed mkAddress notFit
   where
     mkAddress :: AccountMode ctx m => Word32 -> m WAddressMeta
     mkAddress cwamAddressIndex =
-        deriveAddress passphrase wCAddr cwamAddressIndex
+        deriveAddress nm passphrase wCAddr cwamAddressIndex
     notFit _idx addr = doesWAddressExist ws Ever addr
 
 deriveAddressSK
     :: AccountMode ctx m
-    => ShouldCheckPassphrase
-    -> PassPhrase
-    -> AccountId
-    -> Word32
-    -> m (Address, EncryptedSecretKey)
-deriveAddressSK scp passphrase accId addressIndex = do
-    secrets <- getSecretKeys
-    runExceptT (deriveAddressSKPure secrets scp passphrase accId addressIndex) >>= eitherToThrow
-
-deriveAddressSKPure
-    :: MonadError WalletError m
-    => AllUserSecrets
+    => Maybe Int32
     -> ShouldCheckPassphrase
     -> PassPhrase
     -> AccountId
     -> Word32
     -> m (Address, EncryptedSecretKey)
-deriveAddressSKPure secrets scp passphrase AccountId {..} addressIndex = do
-    key <- getSKByIdPure secrets aiWId
+deriveAddressSK nm scp passphrase accId addressIndex = do
+    secrets <- getSecretKeys
+    runExceptT (deriveAddressSKPure nm secrets scp passphrase accId addressIndex) >>= eitherToThrow
+
+deriveAddressSKPure
+    :: MonadError WalletError m
+    => Maybe Int32
+    -> AllUserSecrets
+    -> ShouldCheckPassphrase
+    -> PassPhrase
+    -> AccountId
+    -> Word32
+    -> m (Address, EncryptedSecretKey)
+deriveAddressSKPure nm secrets scp passphrase AccountId {..} addressIndex = do
+    key <- getSKByIdPure nm secrets aiWId
     maybe (throwError badPass) pure $
         deriveLvl2KeyPair
+            nm
             (IsBootstrapEraAddr True) -- TODO: make it context-dependent!
             scp
             passphrase
@@ -202,12 +210,13 @@ deriveAddressSKPure secrets scp passphrase AccountId {..} addressIndex = do
 
 deriveAddress
     :: AccountMode ctx m
-    => PassPhrase
+    => Maybe Int32
+    -> PassPhrase
     -> AccountId
     -> Word32
     -> m WAddressMeta
-deriveAddress passphrase accId@AccountId{..} cwamAddressIndex = do
-    (addr, _) <- deriveAddressSK (ShouldCheckPassphrase True) passphrase accId cwamAddressIndex
+deriveAddress nm passphrase accId@AccountId{..} cwamAddressIndex = do
+    (addr, _) <- deriveAddressSK nm (ShouldCheckPassphrase True) passphrase accId cwamAddressIndex
     return $ WAddressMeta aiWId aiIndex cwamAddressIndex addr
 
 -- | Allows to find a key related to given @id@ item.
@@ -215,7 +224,9 @@ class MonadKeySearch id m where
     findKey :: id -> m EncryptedSecretKey
 
 instance AccountMode ctx m => MonadKeySearch (CId Wal) m where
-    findKey = getSKById
+    -- COME BACK AND FIX THIS
+    -- USED Nothing INSTEAD OF A PROPER network magic
+    findKey = getSKById Nothing
 
 instance AccountMode ctx m => MonadKeySearch AccountId m where
     findKey = findKey . aiWId

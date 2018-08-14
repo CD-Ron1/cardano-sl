@@ -26,9 +26,10 @@ import           Pos.Chain.Block (ComponentBlock (..))
 import           Pos.Chain.Txp (ExtendedGlobalToilM, GlobalToilEnv (..),
                      GlobalToilM, GlobalToilState (..), StakesView (..),
                      ToilVerFailure, TxpConfiguration (..), Utxo, UtxoM,
-                     UtxoModifier, applyToil, defGlobalToilState,
-                     flattenTxPayload, gtsUtxoModifier, rollbackToil,
-                     runGlobalToilMBase, runUtxoM, utxoToLookup, verifyToil, VTxContext (..))
+                     UtxoModifier, VTxContext (..), applyToil,
+                     defGlobalToilState, flattenTxPayload, gtsUtxoModifier,
+                     rollbackToil, runGlobalToilMBase, runUtxoM, utxoToLookup,
+                     verifyToil)
 import           Pos.Core (HasCoreConfiguration, HasGenesisData, ProtocolMagic,
                      epochIndexL)
 import           Pos.Core.Chrono (NE, NewestFirst (..), OldestFirst (..))

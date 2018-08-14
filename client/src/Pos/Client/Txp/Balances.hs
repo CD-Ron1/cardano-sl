@@ -47,9 +47,11 @@ getOwnUtxo = getOwnUtxos . one
 -- from an address. And we can't enumerate all possible addresses for
 -- a public key. So we only consider two addresses: one with bootstrap
 -- era distribution and another one with single key distribution.
-getOwnUtxoForPk :: MonadBalances m => PublicKey -> m Utxo
-getOwnUtxoForPk ourPk = getOwnUtxos ourAddresses
+getOwnUtxoForPk :: MonadBalances m => Maybe Int32 -> PublicKey -> m Utxo
+getOwnUtxoForPk nm ourPk = getOwnUtxos ourAddresses
   where
     ourAddresses :: [Address]
     ourAddresses =
-        map (flip makePubKeyAddress ourPk . IsBootstrapEraAddr) [False, True]
+        -- COME BACK AND FIX THIS
+        -- This was pretty elegant before I changed it
+        map (\ibea -> makePubKeyAddress nm (IsBootstrapEraAddr ibea) ourPk) [False, True]

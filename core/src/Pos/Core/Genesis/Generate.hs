@@ -35,11 +35,12 @@ import           Pos.Core.Configuration.Protocol (HasProtocolConstants,
 import           Pos.Core.Delegation (HeavyDlgIndex (..), ProxySKHeavy)
 import           Pos.Core.Ssc (VssCertificate, mkVssCertificate,
                      mkVssCertificatesMap)
-import           Pos.Crypto (EncryptedSecretKey, ProtocolMagic, RedeemPublicKey,
-                     SecretKey, VssKeyPair, createPsk, deterministic,
-                     emptyPassphrase, encToSecret, keyGen, noPassEncrypt,
-                     randomNumberInRange, redeemDeterministicKeyGen,
-                     safeKeyGen, toPublic, toVssPublicKey, vssKeyGen)
+import           Pos.Crypto (EncryptedSecretKey, ProtocolMagic (..),
+                     RedeemPublicKey, SecretKey, VssKeyPair, createPsk,
+                     deterministic, emptyPassphrase, encToSecret, keyGen,
+                     noPassEncrypt, randomNumberInRange,
+                     redeemDeterministicKeyGen, safeKeyGen, toPublic,
+                     toVssPublicKey, vssKeyGen)
 import           Pos.Util.Util (leftToPanic)
 
 import           Pos.Core.Genesis.AvvmBalances (GenesisAvvmBalances (..))
@@ -165,16 +166,19 @@ generateGenesisData pm (GenesisInitializer{..}) realAvvmBalances = deterministic
     -- Non AVVM balances
     ---- Addresses
     let createAddressRich :: SecretKey -> Address
-        createAddressRich (toPublic -> pk) = makePubKeyAddressBoot pk
+        createAddressRich (toPublic -> pk) =
+            makePubKeyAddressBoot (Just $ getProtocolMagic pm) pk
     let createAddressPoor :: PoorSecret -> Address
         createAddressPoor (PoorEncryptedSecret hdwSk) =
             fst $
             fromMaybe (error "generateGenesisData: pass mismatch") $
             deriveFirstHDAddress
+                (Just $ getProtocolMagic pm)
                 (IsBootstrapEraAddr True)
                 emptyPassphrase
                 hdwSk
-        createAddressPoor (PoorSecret secret) = makePubKeyAddressBoot (toPublic secret)
+        createAddressPoor (PoorSecret secret) =
+            makePubKeyAddressBoot (Just $ getProtocolMagic pm) (toPublic secret)
     let richAddresses = map (createAddressRich . rsPrimaryKey) richmenSecrets
         poorAddresses = map createAddressPoor poorsSecrets
 

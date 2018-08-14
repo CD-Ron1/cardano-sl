@@ -46,7 +46,7 @@ import           Pos.Core.Chrono (NE, NewestFirst (..), OldestFirst (..))
 import           Pos.Core.Exception (assertionFailed)
 import           Pos.Core.Reporting (MonadReporting)
 import           Pos.Core.Update (BlockVersion, BlockVersionData)
-import           Pos.Crypto (ProtocolMagic)
+import           Pos.Crypto (ProtocolMagic (..))
 import           Pos.DB (MonadDB, MonadDBRead, MonadGState, SomeBatchOp (..))
 import           Pos.DB.Block.BListener (MonadBListener)
 import           Pos.DB.Block.GState.SanityCheck (sanityCheckDB)
@@ -187,9 +187,10 @@ applyBlocksDbUnsafeDo
     -> m ()
 applyBlocksDbUnsafeDo pm bv bvd scb blunds pModifier = do
     let blocks = fmap fst blunds
+    let networkMagic = Just $ getProtocolMagic pm
     -- Note: it's important to do 'slogApplyBlocks' first, because it
     -- puts blocks in DB.
-    slogBatch <- slogApplyBlocks scb blunds
+    slogBatch <- slogApplyBlocks networkMagic scb blunds
     TxpGlobalSettings {..} <- view (lensOf @TxpGlobalSettings)
     usBatch <- SomeBatchOp <$> usApplyBlocks pm bv (map toUpdateBlock blocks) pModifier
     delegateBatch <- SomeBatchOp <$> dlgApplyBlocks (map toDlgBlund blunds)
@@ -216,7 +217,8 @@ rollbackBlocksUnsafe
     -> NewestFirst NE Blund
     -> m ()
 rollbackBlocksUnsafe pm bsc scb toRollback = do
-    slogRoll <- slogRollbackBlocks bsc scb toRollback
+    let networkMagic = Just $ getProtocolMagic pm
+    slogRoll <- slogRollbackBlocks networkMagic bsc scb toRollback
     dlgRoll <- SomeBatchOp <$> dlgRollbackBlocks (map toDlgBlund toRollback)
     usRoll <- SomeBatchOp <$> usRollbackBlocks
                   (toRollback & each._2 %~ undoUS

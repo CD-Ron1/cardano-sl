@@ -38,8 +38,8 @@ import           Pos.Core.Merkle (MerkleNode (..), MerkleRoot (..))
 import           Pos.Core.Txp (Tx (..), TxAux (..), TxIn (..), TxInWitness (..),
                      TxOut (..), TxOutAux (..), TxPayload (..), TxProof (..),
                      TxSigData (..), mkTxPayload)
-import           Pos.Crypto (Hash, ProtocolMagic, SecretKey, SignTag (SignTx),
-                     hash, sign, toPublic)
+import           Pos.Crypto (Hash, ProtocolMagic (..), SecretKey,
+                     SignTag (SignTx), hash, sign, toPublic)
 
 import           Test.Pos.Core.Arbitrary ()
 import           Test.Pos.Crypto.Arbitrary (genRedeemSignature, genSignature)
@@ -150,7 +150,7 @@ buildProperTx pm inputList (inCoin, outCoin) =
     mkWitness fromSk =
         PkWitness (toPublic fromSk) (sign pm SignTx fromSk $ TxSigData newTxHash)
     makeTxOutput s c =
-        TxOut (makePubKeyAddress (IsBootstrapEraAddr True) $ toPublic s) c
+        TxOut (makePubKeyAddress (Just $ getProtocolMagic pm) (IsBootstrapEraAddr True) $ toPublic s) c
 
 -- | Well-formed transaction 'Tx'.
 --

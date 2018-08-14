@@ -26,8 +26,7 @@ import           Pos.Chain.Txp.Toil.Monad (UtxoM, utxoDel, utxoGet, utxoPut)
 import           Pos.Chain.Txp.Toil.Types (TxFee (..))
 import           Pos.Core (AddrType (..), Address (..), integerToCoin,
                      isRedeemAddress, isUnknownAddressType, sumCoins)
-import           Pos.Core.Attributes (Attributes (..),
-                     areAttributesKnown)
+import           Pos.Core.Attributes (Attributes (..), areAttributesKnown)
 import           Pos.Core.Common (AddrAttributes (..), checkPubKeyAddress,
                      checkRedeemAddress, checkScriptAddress)
 import           Pos.Core.Txp (Tx (..), TxAttributes, TxAux (..), TxIn (..),
@@ -50,8 +49,8 @@ import           Pos.Util (liftEither)
 data VTxContext = VTxContext
     { -- | Verify that script versions in tx are known, addresses' and
       -- witnesses' types are known, attributes are known too.
-      vtcVerifyAllIsKnown :: !Bool
-    , vtcProtocolMagic :: !ProtocolMagic
+      vtcVerifyAllIsKnown     :: !Bool
+    , vtcProtocolMagic        :: !ProtocolMagic
     , vtcRequiresAddressMagic :: !Bool
 --    , vtcSlotId   :: !SlotId         -- ^ Slot id of block transaction is checked in
 --    , vtcLeaderId :: !StakeholderId  -- ^ Leader id of block transaction is checked in

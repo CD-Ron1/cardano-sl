@@ -234,35 +234,37 @@ makeAddress spendingData attributesUnwrapped =
 newtype IsBootstrapEraAddr = IsBootstrapEraAddr Bool
 
 -- | A function for making an address from 'PublicKey'.
-makePubKeyAddress :: IsBootstrapEraAddr -> PublicKey -> Address
-makePubKeyAddress = makePubKeyAddressImpl Nothing
+makePubKeyAddress :: Maybe Int32 -> IsBootstrapEraAddr -> PublicKey -> Address
+makePubKeyAddress nm = makePubKeyAddressImpl nm Nothing
 
 -- | A function for making an address from 'PublicKey' for bootstrap era.
-makePubKeyAddressBoot :: PublicKey -> Address
-makePubKeyAddressBoot = makePubKeyAddress (IsBootstrapEraAddr True)
+makePubKeyAddressBoot :: Maybe Int32 -> PublicKey -> Address
+makePubKeyAddressBoot nm = makePubKeyAddress nm (IsBootstrapEraAddr True)
 
 -- | This function creates a root public key address. Stake
 -- distribution doesn't matter for root addresses because by design
 -- nobody should even use these addresses as outputs, so we can put
 -- arbitrary distribution there. We use bootstrap era distribution
 -- because its representation is more compact.
-makeRootPubKeyAddress :: PublicKey -> Address
+makeRootPubKeyAddress :: Maybe Int32 -> PublicKey -> Address
 makeRootPubKeyAddress = makePubKeyAddressBoot
 
 -- | A function for making an HDW address.
 makePubKeyHdwAddress
-    :: IsBootstrapEraAddr
+    :: Maybe Int32
+    -> IsBootstrapEraAddr
     -> HDAddressPayload    -- ^ Derivation path
     -> PublicKey
     -> Address
-makePubKeyHdwAddress ibe path = makePubKeyAddressImpl (Just path) ibe
+makePubKeyHdwAddress nm ibe path = makePubKeyAddressImpl nm (Just path) ibe
 
 makePubKeyAddressImpl
-    :: Maybe HDAddressPayload
+    :: Maybe Int32
+    -> Maybe HDAddressPayload
     -> IsBootstrapEraAddr
     -> PublicKey
     -> Address
-makePubKeyAddressImpl path (IsBootstrapEraAddr isBootstrapEra) key =
+makePubKeyAddressImpl networkMagic path (IsBootstrapEraAddr isBootstrapEra) key =
     makeAddress spendingData attrs
   where
     spendingData = PubKeyASD key
@@ -270,8 +272,10 @@ makePubKeyAddressImpl path (IsBootstrapEraAddr isBootstrapEra) key =
         | isBootstrapEra = BootstrapEraDistr
         | otherwise = SingleKeyDistr (addressHash key)
     attrs =
-        AddrAttributes { aaStakeDistribution = distr, aaPkDerivationPath = path
-                       , aaNetworkMagic = Nothing }
+        AddrAttributes { aaStakeDistribution = distr
+                       , aaPkDerivationPath = path
+                       , aaNetworkMagic = networkMagic
+                       }
 
 -- | A function for making an address from a validation 'Script'.  It
 -- takes an optional 'StakeholderId'. If it's given, it will receive
@@ -297,7 +301,8 @@ makeRedeemAddress key = makeAddress spendingData attrs
 
 -- | Create address from secret key in hardened way.
 createHDAddressH
-    :: IsBootstrapEraAddr
+    :: Maybe Int32
+    -> IsBootstrapEraAddr
     -> ShouldCheckPassphrase
     -> PassPhrase
     -> HDPassphrase
@@ -305,24 +310,25 @@ createHDAddressH
     -> [Word32]
     -> Word32
     -> Maybe (Address, EncryptedSecretKey)
-createHDAddressH ibea scp passphrase hdPassphrase parent parentPath childIndex = do
+createHDAddressH nm ibea scp passphrase hdPassphrase parent parentPath childIndex = do
     derivedSK <- deriveHDSecretKey scp passphrase parent childIndex
     let addressPayload = packHDAddressAttr hdPassphrase $ parentPath ++ [childIndex]
     let pk = encToPublic derivedSK
-    return (makePubKeyHdwAddress ibea addressPayload pk, derivedSK)
+    return (makePubKeyHdwAddress nm ibea addressPayload pk, derivedSK)
 
 -- | Create address from public key via non-hardened way.
 createHDAddressNH
-    :: IsBootstrapEraAddr
+    :: Maybe Int32
+    -> IsBootstrapEraAddr
     -> HDPassphrase
     -> PublicKey
     -> [Word32]
     -> Word32
     -> (Address, PublicKey)
-createHDAddressNH ibea passphrase parent parentPath childIndex = do
+createHDAddressNH nm ibea passphrase parent parentPath childIndex = do
     let derivedPK = deriveHDPublicKey parent childIndex
     let addressPayload = packHDAddressAttr passphrase $ parentPath ++ [childIndex]
-    (makePubKeyHdwAddress ibea addressPayload derivedPK, derivedPK)
+    (makePubKeyHdwAddress nm ibea addressPayload derivedPK, derivedPK)
 
 ----------------------------------------------------------------------------
 -- Checks
@@ -358,26 +364,28 @@ addrAttributesUnwrapped = attrData . addrAttributes
 
 -- | Makes account secret key for given wallet set.
 deriveLvl2KeyPair
-    :: IsBootstrapEraAddr
+    :: Maybe Int32
+    -> IsBootstrapEraAddr
     -> ShouldCheckPassphrase
     -> PassPhrase
     -> EncryptedSecretKey -- ^ key of wallet
     -> Word32 -- ^ account derivation index
     -> Word32 -- ^ address derivation index
     -> Maybe (Address, EncryptedSecretKey)
-deriveLvl2KeyPair ibea scp passphrase wsKey accountIndex addressIndex = do
+deriveLvl2KeyPair nm ibea scp passphrase wsKey accountIndex addressIndex = do
     wKey <- deriveHDSecretKey scp passphrase wsKey accountIndex
     let hdPass = deriveHDPassphrase $ encToPublic wsKey
     -- We don't need to check passphrase twice
-    createHDAddressH ibea (ShouldCheckPassphrase False) passphrase hdPass wKey [accountIndex] addressIndex
+    createHDAddressH nm ibea (ShouldCheckPassphrase False) passphrase hdPass wKey [accountIndex] addressIndex
 
 deriveFirstHDAddress
-    :: IsBootstrapEraAddr
+    :: Maybe Int32
+    -> IsBootstrapEraAddr
     -> PassPhrase
     -> EncryptedSecretKey -- ^ key of wallet set
     -> Maybe (Address, EncryptedSecretKey)
-deriveFirstHDAddress ibea passphrase wsKey =
-    deriveLvl2KeyPair ibea (ShouldCheckPassphrase False) passphrase wsKey accountGenesisIndex wAddressGenesisIndex
+deriveFirstHDAddress nm ibea passphrase wsKey =
+    deriveLvl2KeyPair nm ibea (ShouldCheckPassphrase False) passphrase wsKey accountGenesisIndex wAddressGenesisIndex
 
 ----------------------------------------------------------------------------
 -- Pattern-matching helpers
@@ -410,32 +418,33 @@ isBootstrapEraDistrAddress (addrAttributesUnwrapped -> AddrAttributes {..}) =
 -- | Largest (considering size of serialized data) PubKey address with
 -- BootstrapEra distribution. Actual size depends on CRC32 value which
 -- is serialized using var-length encoding.
-largestPubKeyAddressBoot :: Address
-largestPubKeyAddressBoot = makePubKeyAddressBoot goodPk
+largestPubKeyAddressBoot :: Maybe Int32 -> Address
+largestPubKeyAddressBoot nm = makePubKeyAddressBoot nm goodPk
 
 -- | Maximal size of PubKey address with BootstrapEra
 -- distribution (43).
-maxPubKeyAddressSizeBoot :: Byte
-maxPubKeyAddressSizeBoot = biSize largestPubKeyAddressBoot
+maxPubKeyAddressSizeBoot :: Maybe Int32 -> Byte
+maxPubKeyAddressSizeBoot nm = biSize $ largestPubKeyAddressBoot nm
 
 -- | Largest (considering size of serialized data) PubKey address with
 -- SingleKey distribution. Actual size depends on CRC32 value which
 -- is serialized using var-length encoding.
-largestPubKeyAddressSingleKey :: Address
-largestPubKeyAddressSingleKey =
-    makePubKeyAddress (IsBootstrapEraAddr False) goodPk
+largestPubKeyAddressSingleKey :: Maybe Int32 -> Address
+largestPubKeyAddressSingleKey nm =
+    makePubKeyAddress nm (IsBootstrapEraAddr False) goodPk
 
 -- | Maximal size of PubKey address with SingleKey
 -- distribution (78).
-maxPubKeyAddressSizeSingleKey :: Byte
-maxPubKeyAddressSizeSingleKey = biSize largestPubKeyAddressSingleKey
+maxPubKeyAddressSizeSingleKey :: Maybe Int32 -> Byte
+maxPubKeyAddressSizeSingleKey nm = biSize $ largestPubKeyAddressSingleKey nm
 
 -- | Largest (considering size of serialized data) HD address with
 -- BootstrapEra distribution. Actual size depends on CRC32 value which
 -- is serialized using var-length encoding.
-largestHDAddressBoot :: Address
-largestHDAddressBoot =
+largestHDAddressBoot :: Maybe Int32 -> Address
+largestHDAddressBoot nm =
     case deriveLvl2KeyPair
+             nm
              (IsBootstrapEraAddr True)
              (ShouldCheckPassphrase False)
              emptyPassphrase
@@ -449,8 +458,8 @@ largestHDAddressBoot =
 
 -- | Maximal size of HD address with BootstrapEra
 -- distribution (76).
-maxHDAddressSizeBoot :: Byte
-maxHDAddressSizeBoot = biSize largestHDAddressBoot
+maxHDAddressSizeBoot :: Maybe Int32 -> Byte
+maxHDAddressSizeBoot nm = biSize $ largestHDAddressBoot nm
 
 -- Public key and secret key for which we know that they produce
 -- largest addresses in all cases we are interested in. It was checked

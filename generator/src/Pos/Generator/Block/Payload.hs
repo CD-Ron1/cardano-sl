@@ -32,7 +32,7 @@ import           Pos.Core (AddrSpendingData (..), Address (..), Coin,
                      makePubKeyAddressBoot, unsafeIntegerToCoin)
 import           Pos.Core.Txp (Tx (..), TxAux (..), TxIn (..), TxOut (..),
                      TxOutAux (..))
-import           Pos.Crypto (ProtocolMagic, SecretKey, WithHash (..),
+import           Pos.Crypto (ProtocolMagic (..), SecretKey, WithHash (..),
                      fakeSigner, hash, toPublic)
 import           Pos.DB.Txp (MonadTxpLocal (..), getAllPotentiallyHugeUtxo)
 import           Pos.Generator.Block.Error (BlockGenError (..))
@@ -169,7 +169,7 @@ genTxPayload pm txpConfig = do
         -- Currently payload generator only uses addresses with
         -- bootstrap era distribution. This is fine, because we don't
         -- have usecases where we switch to reward era.
-        let utxoAddresses = map (makePubKeyAddressBoot . toPublic) $ HM.elems secrets
+        let utxoAddresses = map (makePubKeyAddressBoot (Just $ getProtocolMagic pm) . toPublic) $ HM.elems secrets
             utxoAddrsN = HM.size secrets
         let adder hm TxOutAux { toaOut = TxOut {..} } =
                 HM.insertWith (+) txOutAddress (coinToInteger txOutValue) hm
@@ -198,7 +198,7 @@ genTxPayload pm txpConfig = do
         totalTxAmount <- getRandomR (fromIntegral outputsN, totalOwnMoney `div` 2)
 
         changeAddrIdx <- getRandomR (0, utxoAddrsN - 1)
-        let changeAddrData = makePubKeyAddressBoot $ secretsPks !! changeAddrIdx
+        let changeAddrData = makePubKeyAddressBoot (Just $ getProtocolMagic pm) $ secretsPks !! changeAddrIdx
 
         -- Prepare tx outputs
         coins <- splitCoins outputsN (unsafeIntegerToCoin totalTxAmount)

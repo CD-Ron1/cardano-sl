@@ -84,8 +84,8 @@ instance Buildable AllSecrets where
 -- | Make simple 'AllSecrets' assuming that only public key addresses
 -- with bootstrap era distribution and single key distribution exist
 -- in the system.
-mkAllSecretsSimple :: [SecretKey] -> AllSecrets
-mkAllSecretsSimple sks =
+mkAllSecretsSimple :: Maybe Int32 -> [SecretKey] -> AllSecrets
+mkAllSecretsSimple nm sks =
     AllSecrets
     { _asSecretKeys = mkInvSecretsMap sks
     , _asSpendingData = invAddrSpendingData
@@ -94,8 +94,8 @@ mkAllSecretsSimple sks =
     pks :: [PublicKey]
     pks = map toPublic sks
     spendingDataList = map PubKeyASD pks
-    addressesNonBoot = map (makePubKeyAddress (IsBootstrapEraAddr False)) pks
-    addressesBoot = map makePubKeyAddressBoot pks
+    addressesNonBoot = map (makePubKeyAddress nm (IsBootstrapEraAddr False)) pks
+    addressesBoot = map (makePubKeyAddressBoot nm) pks
     invAddrSpendingData =
         mkInvAddrSpendingData $
         zip addressesNonBoot spendingDataList <>

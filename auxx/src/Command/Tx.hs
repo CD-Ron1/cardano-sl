@@ -48,9 +48,9 @@ import           Pos.Core.Configuration (genesisBlockVersionData,
 import           Pos.Core.Txp (TxAux (..), TxIn (TxInUtxo), TxOut (..),
                      TxOutAux (..), txaF)
 import           Pos.Core.Update (BlockVersionData (..))
-import           Pos.Crypto (EncryptedSecretKey, ProtocolMagic, emptyPassphrase,
-                     encToPublic, fakeSigner, hash, safeToPublic, toPublic,
-                     withSafeSigners)
+import           Pos.Crypto (EncryptedSecretKey, ProtocolMagic (..),
+                     emptyPassphrase, encToPublic, fakeSigner, hash,
+                     safeToPublic, toPublic, withSafeSigners)
 import           Pos.Infra.Diffusion.Types (Diffusion (..))
 import           Pos.Util.UserSecret (usWallet, userSecret, wusRootKey)
 import           Pos.Util.Util (maybeThrow)
@@ -121,7 +121,7 @@ sendToAllGenesis pm diffusion (SendToAllGenesisParams genesisTxsPerThread txsPer
                     txOutValue = mkCoin 1
                     }
                     txOuts = TxOutAux txOut1 :| []
-                utxo <- getOwnUtxoForPk $ safeToPublic signer
+                utxo <- getOwnUtxoForPk (getProtocolMagic pm) $ safeToPublic signer
                 etx <- createTx pm mempty utxo signer txOuts publicKey
                 case etx of
                     Left err -> logError (sformat ("Error: "%build%" while trying to contruct tx") err)

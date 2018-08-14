@@ -18,11 +18,11 @@ import           Pos.Core (Address)
 data TxpConfiguration = TxpConfiguration
     { -- | Limit on the number of transactions that can be stored in
       -- the mem pool.
-      ccMemPoolLimitTx      :: !Int
+      ccMemPoolLimitTx       :: !Int
 
       -- | Set of source address which are asset-locked. Transactions which
       -- use these addresses as transaction inputs will be silently dropped.
-    , tcAssetLockedSrcAddrs :: !(Set Address)
+    , tcAssetLockedSrcAddrs  :: !(Set Address)
       -- | Boolean indicating presence/absense of ProtocolMagic
       -- in Addresses for this cluster.
     , tcRequiresNetworkMagic :: !Bool

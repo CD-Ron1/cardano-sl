@@ -75,11 +75,11 @@ buildTHEntryExtra wdc (WithHash tx txId, NE.toList -> undoL) (mDiff, mTs) =
 
 type WalletDecrCredentials = (HDPassphrase, CId Wal)
 
-eskToWalletDecrCredentials :: EncryptedSecretKey -> WalletDecrCredentials
-eskToWalletDecrCredentials encSK = do
+eskToWalletDecrCredentials :: Maybe Int32 -> EncryptedSecretKey -> WalletDecrCredentials
+eskToWalletDecrCredentials nm encSK = do
     let pubKey = encToPublic encSK
     let hdPass = deriveHDPassphrase pubKey
-    let wCId = encodeCType $ makeRootPubKeyAddress pubKey
+    let wCId = encodeCType $ makeRootPubKeyAddress nm pubKey
     (hdPass, wCId)
 
 selectOwnAddresses

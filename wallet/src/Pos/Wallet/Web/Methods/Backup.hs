@@ -29,19 +29,19 @@ type MonadWalletBackup ctx m = ( L.MonadWalletLogic ctx m
                                , HasLens SyncQueue ctx SyncQueue
                                )
 
-importWalletJSON :: MonadWalletBackup ctx m => CFilePath -> m CWallet
-importWalletJSON (CFilePath (toString -> fp)) = do
+importWalletJSON :: MonadWalletBackup ctx m => Maybe Int32 -> CFilePath -> m CWallet
+importWalletJSON nm (CFilePath (toString -> fp)) = do
     contents <- liftIO $ BSL.readFile fp
     TotalBackup wBackup <- either parseErr pure $ A.eitherDecode contents
-    restoreWalletFromBackup wBackup
+    restoreWalletFromBackup nm wBackup
   where
     parseErr err = throwM . RequestError $
         sformat ("Error while reading JSON backup file: "%stext) $
         toText err
 
-exportWalletJSON :: MonadWalletBackup ctx m => CId Wal -> CFilePath -> m NoContent
-exportWalletJSON wid (CFilePath (toString -> fp)) = do
+exportWalletJSON :: MonadWalletBackup ctx m => Maybe Int32 -> CId Wal -> CFilePath -> m NoContent
+exportWalletJSON nm wid (CFilePath (toString -> fp)) = do
     ws <- askWalletSnapshot
-    wBackup <- TotalBackup <$> getWalletBackup ws wid
+    wBackup <- TotalBackup <$> getWalletBackup nm ws wid
     liftIO $ BSL.writeFile fp $ A.encode wBackup
     return NoContent

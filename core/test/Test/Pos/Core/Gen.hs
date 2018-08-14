@@ -195,8 +195,8 @@ import           Pos.Core.Update (ApplicationName (..), BlockVersion (..),
                      UpdateProof, UpdateProposal (..),
                      UpdateProposalToSign (..), UpdateProposals,
                      UpdateVote (..), VoteId, mkUpdateVote)
-import           Pos.Crypto (Hash, ProtocolMagic (..), decodeHash, deterministic,
-                     hash, safeCreatePsk, sign)
+import           Pos.Crypto (Hash, ProtocolMagic (..), decodeHash,
+                     deterministic, hash, safeCreatePsk, sign)
 import           Pos.Util.Util (leftToPanic)
 import           Serokell.Data.Memory.Units (Byte)
 
