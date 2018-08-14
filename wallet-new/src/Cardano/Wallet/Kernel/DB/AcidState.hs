@@ -99,8 +99,6 @@ defDB = DB initHdWallets
   Custom errors
 -------------------------------------------------------------------------------}
 
--- TODO NewPending ...MissingKey (note: should not happen)
-
 -- | Errors thrown by 'newPending'
 data NewPendingError =
     -- | Unknown account
@@ -110,6 +108,7 @@ data NewPendingError =
   | NewPendingFailed Spec.NewPendingFailed
 
   -- | Could not find the key for the account to which this pending transaction is being submitted
+  --   NOTE: this is not a domain error and would only happen if something went wrong with the Keystore
   | NewPendingMissingKey HdAccountId
 
 -- | Errors thrown by 'newForeign'
